@@ -1,111 +1,158 @@
 // File: pages/index.js
 import { useEffect, useState } from 'react';
-import { ResponsiveLine } from '@nivo/line';
-import { ResponsiveBar } from '@nivo/bar';
-import { ResponsiveCalendar } from '@nivo/calendar';
+import Link from 'next/link';
 import { supabase } from '../utils/supabase';
+import { ResponsiveCirclePacking } from '@nivo/circle-packing';
+import {
+  Users,
+  BarChart2,
+} from 'lucide-react';
 
 export default function HomePage() {
-  const [lineData, setLineData] = useState([]);
-  const [barData, setBarData] = useState([]);
-  const [calendarData, setCalendarData] = useState([]);
+  const [topSolicitors, setTopSolicitors] = useState([]);
+  const [topTeams, setTopTeams] = useState([]);
+  const [circleData, setCircleData] = useState(null);
 
   useEffect(() => {
-    async function loadStats() {
-      const { data } = await supabase
+    async function loadData() {
+      const { data: stats } = await supabase
         .from('stats_daily')
         .select('date, solicitor_id, clicks')
-        .gte('date', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
-        .order('date');
+        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
       const { data: solicitors } = await supabase
         .from('solicitors')
         .select('id, name');
 
-      // Line chart: total clicks per day
-      const dailyMap = {};
-      data.forEach(row => {
-        if (!dailyMap[row.date]) dailyMap[row.date] = 0;
-        dailyMap[row.date] += row.clicks;
-      });
-      const line = [{
-        id: 'Total Clicks',
-        data: Object.entries(dailyMap).map(([date, value]) => ({ x: date, y: value }))
-      }];
-      setLineData(line);
+      const { data: solicitorTeams } = await supabase
+        .from('solicitor_teams')
+        .select('solicitor_id, team_id');
 
-      // Bar chart: top 10 solicitors by 30-day clicks
-      const recentCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const recentStats = data.filter(row => new Date(row.date) >= recentCutoff);
-      const countMap = {};
-      recentStats.forEach(row => {
-        if (!countMap[row.solicitor_id]) countMap[row.solicitor_id] = 0;
-        countMap[row.solicitor_id] += row.clicks;
+      const { data: teams } = await supabase
+        .from('teams')
+        .select('id, name');
+
+      const solicitorMap = new Map(solicitors.map(s => [s.id, s.name]));
+      const teamMap = new Map(teams.map(t => [t.id, t.name]));
+      const teamBySolicitor = new Map();
+      solicitorTeams.forEach(({ solicitor_id, team_id }) => {
+        if (!teamBySolicitor.has(solicitor_id)) teamBySolicitor.set(solicitor_id, []);
+        teamBySolicitor.get(solicitor_id).push(team_id);
       });
-      const bar = Object.entries(countMap)
-        .map(([id, clicks]) => {
-          const s = solicitors.find(s => s.id === id);
-          return { name: s?.name || id, clicks };
-        })
+
+      const solicitorClicks = {};
+      const teamClicks = {};
+
+      for (const row of stats) {
+        const solicitorId = row.solicitor_id;
+        if (!solicitorId || !row.clicks) continue;
+
+        if (!solicitorClicks[solicitorId]) solicitorClicks[solicitorId] = 0;
+        solicitorClicks[solicitorId] += row.clicks;
+
+        const teamIds = teamBySolicitor.get(solicitorId) || [];
+        for (const teamId of teamIds) {
+          if (!teamClicks[teamId]) teamClicks[teamId] = 0;
+          teamClicks[teamId] += row.clicks;
+        }
+      }
+
+      const solicitorArray = Object.entries(solicitorClicks)
+        .map(([id, clicks]) => ({ id, name: solicitorMap.get(id) || id, clicks }))
         .sort((a, b) => b.clicks - a.clicks)
         .slice(0, 10);
-      setBarData(bar);
+      setTopSolicitors(solicitorArray);
 
-      // Calendar: total clicks per day (past 1 year)
-      const calendar = Object.entries(dailyMap).map(([date, value]) => ({ day: date, value }));
-      setCalendarData(calendar);
+      const teamArray = Object.entries(teamClicks)
+        .map(([id, clicks]) => ({ id, name: teamMap.get(id) || id, clicks }))
+        .sort((a, b) => b.clicks - a.clicks)
+        .slice(0, 10);
+      setTopTeams(teamArray);
+
+      const packedData = {
+        name: 'Teams',
+        children: Array.from(teamMap.entries())
+          .map(([teamId, teamName]) => {
+            const children = solicitors
+              .filter(s => (teamBySolicitor.get(s.id) || []).includes(teamId))
+              .map(s => ({ name: s.name, value: solicitorClicks[s.id] || 0 }))
+              .filter(c => c.value > 0);
+
+            const total = children.reduce((sum, c) => sum + c.value, 0);
+            return total > 0 ? { name: teamName, children } : null;
+          })
+          .filter(Boolean)
+      };
+      setCircleData(packedData);
     }
 
-    loadStats();
+    loadData();
   }, []);
 
   return (
-    <div className="space-y-10">
-      <h1 className="text-3xl font-bold">Dashboard Overview</h1>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Left Column (1/3 width) */}
+      <div className="col-span-1 flex flex-col gap-6">
+        {/* Top Solicitors */}
+        <div className="bg-white p-4 rounded shadow">
+          <div className="flex items-center gap-2 mb-2">
+            <Users size={20} />
+            <h2 className="text-lg font-semibold">Top Solicitors (30 days)</h2>
+          </div>
+          <ul className="space-y-1">
+            {topSolicitors.map((s, i) => (
+              <li key={i} className="flex justify-between text-sm">
+                <Link href={`/solicitors/${s.id}`} className="text-blue-600 hover:underline">
+                  {s.name}
+                </Link>
+                <span className="font-mono">{s.clicks}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-      <div style={{ height: 300 }}>
-        <h2 className="text-xl font-semibold mb-2">📈 Popularity Trend (Last 30 Days)</h2>
-        <ResponsiveLine
-          data={lineData}
-          margin={{ top: 10, right: 30, bottom: 50, left: 50 }}
-          xScale={{ type: 'point' }}
-          yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
-          axisBottom={{ tickRotation: -45 }}
-          axisLeft={{ legend: 'Clicks' }}
-          curve="monotoneX"
-          useMesh={true}
-        />
+        {/* Top Teams */}
+        <div className="bg-white p-4 rounded shadow">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart2 size={20} />
+            <h2 className="text-lg font-semibold">Top Teams (30 days)</h2>
+          </div>
+          <ul className="space-y-1">
+            {topTeams.map((t, i) => (
+              <li key={i} className="flex justify-between text-sm">
+                <Link href={`/teams/${t.id}`} className="text-blue-600 hover:underline">
+                  {t.name}
+                </Link>
+                <span className="font-mono">{t.clicks}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
-      <div style={{ height: 400 }}>
-        <h2 className="text-xl font-semibold mb-2">🏆 Top 10 Solicitors (30 Days)</h2>
-        <ResponsiveBar
-          data={barData}
-          keys={['clicks']}
-          indexBy="name"
-          margin={{ top: 10, right: 20, bottom: 80, left: 60 }}
-          padding={0.3}
-          layout="vertical"
-          axisBottom={{ tickRotation: -45 }}
-          axisLeft={{ legend: 'Clicks' }}
-          colors={{ scheme: 'nivo' }}
-        />
-      </div>
-
-      <div style={{ height: 300 }}>
-        <h2 className="text-xl font-semibold mb-2">📆 Yearly Traffic Calendar</h2>
-        <ResponsiveCalendar
-          data={calendarData}
-          from={new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
-          to={new Date().toISOString().slice(0, 10)}
-          emptyColor="#eeeeee"
-          colors={["#d6e685", "#8cc665", "#44a340", "#1e6823"]}
-          margin={{ top: 20, right: 40, bottom: 20, left: 40 }}
-          yearSpacing={40}
-          monthBorderColor="#ffffff"
-          dayBorderWidth={2}
-          dayBorderColor="#ffffff"
-        />
+      {/* Right Column (2/3 width) */}
+      <div className="col-span-1 md:col-span-2 bg-white p-4 rounded shadow">
+        <h2 className="text-lg font-semibold mb-2">📦 Views by Team</h2>
+        <div className="h-[500px]">
+          {circleData && (
+            <ResponsiveCirclePacking
+              data={circleData}
+              id="name"
+              value="value"
+              margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              colors={{ scheme: 'nivo' }}
+              labelSkipRadius={20}
+              label={({ id }) => id}
+              tooltip={({ id, value }) => (
+                <strong>
+                  {id}: {value} views
+                </strong>
+              )}
+              animate={true}
+              motionConfig="gentle"
+            />
+          )}
+        </div>
       </div>
     </div>
   );
