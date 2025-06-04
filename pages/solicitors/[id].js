@@ -1,4 +1,6 @@
-// pages/solicitors/[id].js
+// Update for pages/solicitors/[id].js
+// Adds trend comparisons for last 30 days only.
+
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabase';
@@ -11,6 +13,7 @@ export default function SolicitorDetail() {
 
   const [solicitor, setSolicitor] = useState(null);
   const [stats, setStats] = useState(null);
+  const [previousStats, setPreviousStats] = useState(null);
   const [teams, setTeams] = useState([]);
   const [dailyStats, setDailyStats] = useState([]);
   const [teamStats, setTeamStats] = useState([]);
@@ -36,6 +39,24 @@ export default function SolicitorDetail() {
         to_date: toDate,
       }).select('*');
 
+      // Load previous 30-day stats for comparison (only if current period is 30d)
+      let prevStatData = null;
+      if (period === '30d') {
+        const prevStart = new Date();
+        prevStart.setDate(prevStart.getDate() - 60);
+        const prevEnd = new Date();
+        prevEnd.setDate(prevEnd.getDate() - 30);
+
+        const { data: prevStats } = await supabase.rpc('get_solicitor_engagement_stats', {
+          sid: id,
+          period: 'custom',
+          from_date: prevStart.toISOString().slice(0, 10),
+          to_date: prevEnd.toISOString().slice(0, 10),
+        }).select('*');
+
+        prevStatData = prevStats?.[0];
+      }
+
       const { data: dailyData } = await supabase
         .from('stats_daily')
         .select('date, clicks')
@@ -46,11 +67,21 @@ export default function SolicitorDetail() {
       setSolicitor(sData);
       setTeams(tData?.map(t => ({ id: t.team_id, name: t.teams.name })) || []);
       setStats(statData?.[0]);
+      setPreviousStats(prevStatData);
       setDailyStats(dailyData || []);
     }
 
     loadData();
   }, [id, period, fromDate, toDate]);
+
+  const renderDelta = (current, previous) => {
+    if (previous == null || current == null) return null;
+    const diff = current - previous;
+    const up = diff > 0;
+    const color = up ? 'text-green-600' : 'text-red-600';
+    const arrow = up ? '↑' : '↓';
+    return <span className={`ml-1 text-sm ${color}`}>{arrow} {Math.abs(diff)}</span>;
+  };
 
   const calendarData = dailyStats.map((row) => ({
     day: row.date,
@@ -96,15 +127,24 @@ export default function SolicitorDetail() {
         <div className="flex gap-4">
           <div className="bg-gray-50 border rounded p-4 w-48">
             <p className="text-sm text-gray-500">Bio Views</p>
-            <p className="text-xl font-bold">{stats?.bio_clicks ?? 0}</p>
+            <p className="text-xl font-bold">
+              {stats?.bio_clicks ?? 0}
+              {period === '30d' && renderDelta(stats?.bio_clicks, previousStats?.bio_clicks)}
+            </p>
           </div>
           <div className="bg-gray-50 border rounded p-4 w-48">
             <p className="text-sm text-gray-500">Legal Update Views</p>
-            <p className="text-xl font-bold">{stats?.update_clicks ?? 0}</p>
+            <p className="text-xl font-bold">
+              {stats?.update_clicks ?? 0}
+              {period === '30d' && renderDelta(stats?.update_clicks, previousStats?.update_clicks)}
+            </p>
           </div>
           <div className="bg-gray-50 border rounded p-4 w-48">
             <p className="text-sm text-gray-500">News Views</p>
-            <p className="text-xl font-bold">{stats?.news_clicks ?? 0}</p>
+            <p className="text-xl font-bold">
+              {stats?.news_clicks ?? 0}
+              {period === '30d' && renderDelta(stats?.news_clicks, previousStats?.news_clicks)}
+            </p>
           </div>
         </div>
 
@@ -124,7 +164,9 @@ export default function SolicitorDetail() {
         )}
       </div>
 
-      {/* Daily Calendar */}
+      {/* Calendar + Charts */}
+      {/* (No changes here) */}
+
       {calendarData.length > 0 && (
         <div className="bg-white shadow rounded p-4">
           <h2 className="text-lg font-semibold mb-2">Daily Clicks Calendar</h2>
@@ -134,7 +176,7 @@ export default function SolicitorDetail() {
               from={calendarData[0].day}
               to={calendarData[calendarData.length - 1].day}
               emptyColor="#eeeeee"
-              colors={['#d6e685', '#8cc665', '#44a340', '#1e6823']}
+              colors={["#d6e685", "#8cc665", "#44a340", "#1e6823"]}
               margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
               yearSpacing={40}
               monthBorderColor="#ffffff"
@@ -145,7 +187,6 @@ export default function SolicitorDetail() {
         </div>
       )}
 
-      {/* Line Chart */}
       {lineData[0].data.length > 0 && (
         <div className="bg-white shadow rounded p-4">
           <h2 className="text-lg font-semibold mb-2">Popularity Trend</h2>
@@ -183,7 +224,6 @@ export default function SolicitorDetail() {
         </div>
       )}
 
-      {/* Teams List */}
       {teams.length > 0 && (
         <div className="bg-white shadow rounded p-4">
           <h2 className="text-lg font-semibold mb-2">Teams</h2>
