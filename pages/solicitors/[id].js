@@ -1,4 +1,4 @@
-// File: pages/solicitors/[id].js
+// pages/solicitors/[id].js
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabase';
@@ -8,11 +8,15 @@ import { ResponsiveLine } from '@nivo/line';
 export default function SolicitorDetail() {
   const router = useRouter();
   const { id } = router.query;
+
   const [solicitor, setSolicitor] = useState(null);
   const [stats, setStats] = useState(null);
   const [teams, setTeams] = useState([]);
   const [dailyStats, setDailyStats] = useState([]);
   const [teamStats, setTeamStats] = useState([]);
+  const [period, setPeriod] = useState('30d');
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
 
   useEffect(() => {
     if (!id) return;
@@ -22,26 +26,31 @@ export default function SolicitorDetail() {
       const { data: tData } = await supabase
         .from('solicitor_teams')
         .select('team_id, teams(name)')
-        .eq('solicitor_id', id);
-      const { data: statData } = await supabase.rpc('get_solicitor_stats', { sid: id }).select('*');
+        .eq('solicitor_id', id)
+        .order('teams(name)');
+
+      const { data: statData } = await supabase.rpc('get_solicitor_engagement_stats', {
+        sid: id,
+        period,
+        from_date: fromDate,
+        to_date: toDate,
+      }).select('*');
+
       const { data: dailyData } = await supabase
         .from('stats_daily')
         .select('date, clicks')
+        .gte('clicks', 1)
         .eq('solicitor_id', id)
         .order('date');
-      const { data: teamStatsData } = await supabase
-        .rpc('get_team_stats_for_solicitor', { sid: id })
-        .select('*');
 
       setSolicitor(sData);
-      setTeams(tData?.map(t => ({ id: t.team_id, name: t.teams.name })) || []);      
+      setTeams(tData?.map(t => ({ id: t.team_id, name: t.teams.name })) || []);
       setStats(statData?.[0]);
       setDailyStats(dailyData || []);
-      setTeamStats(teamStatsData || []);
     }
 
     loadData();
-  }, [id]);
+  }, [id, period, fromDate, toDate]);
 
   const calendarData = dailyStats.map((row) => ({
     day: row.date,
@@ -51,10 +60,7 @@ export default function SolicitorDetail() {
   const lineData = [
     {
       id: 'Clicks',
-      data: dailyStats.map(row => ({
-        x: row.date,
-        y: row.clicks,
-      })),
+      data: dailyStats.map(row => ({ x: row.date, y: row.clicks })),
     },
   ];
 
@@ -62,6 +68,7 @@ export default function SolicitorDetail() {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold">{solicitor.name}</h1>
@@ -70,21 +77,54 @@ export default function SolicitorDetail() {
         <div className="w-24 h-24 bg-gray-300 rounded-full" />
       </div>
 
-      <div className="flex gap-4">
-        <div className="bg-white shadow rounded p-4 w-48">
-          <p className="text-sm text-gray-500">Today</p>
-          <p className="text-xl font-bold">{stats?.clicks_today ?? 0}</p>
+      {/* Stats Summary */}
+      <div className="bg-white shadow rounded p-4 w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">Engagement</h2>
+          <select
+            className="border rounded px-2 py-1 text-sm"
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+          >
+            <option value="30d">Last 30 Days</option>
+            <option value="90d">Last 90 Days</option>
+            <option value="ytd">Year to Date</option>
+            <option value="custom">Custom Range</option>
+          </select>
         </div>
-        <div className="bg-white shadow rounded p-4 w-48">
-          <p className="text-sm text-gray-500">Last 7 Days</p>
-          <p className="text-xl font-bold">{stats?.clicks_7d ?? 0}</p>
+
+        <div className="flex gap-4">
+          <div className="bg-gray-50 border rounded p-4 w-48">
+            <p className="text-sm text-gray-500">Bio Views</p>
+            <p className="text-xl font-bold">{stats?.bio_clicks ?? 0}</p>
+          </div>
+          <div className="bg-gray-50 border rounded p-4 w-48">
+            <p className="text-sm text-gray-500">Legal Update Views</p>
+            <p className="text-xl font-bold">{stats?.update_clicks ?? 0}</p>
+          </div>
+          <div className="bg-gray-50 border rounded p-4 w-48">
+            <p className="text-sm text-gray-500">News Views</p>
+            <p className="text-xl font-bold">{stats?.news_clicks ?? 0}</p>
+          </div>
         </div>
-        <div className="bg-white shadow rounded p-4 w-48">
-          <p className="text-sm text-gray-500">Last 30 Days</p>
-          <p className="text-xl font-bold">{stats?.clicks_30d ?? 0}</p>
-        </div>
+
+        {period === 'custom' && (
+          <div className="mt-4 flex gap-2">
+            <input
+              type="date"
+              className="border rounded px-2 py-1 text-sm"
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+            <input
+              type="date"
+              className="border rounded px-2 py-1 text-sm"
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
+      {/* Daily Calendar */}
       {calendarData.length > 0 && (
         <div className="bg-white shadow rounded p-4">
           <h2 className="text-lg font-semibold mb-2">Daily Clicks Calendar</h2>
@@ -105,15 +145,16 @@ export default function SolicitorDetail() {
         </div>
       )}
 
+      {/* Line Chart */}
       {lineData[0].data.length > 0 && (
         <div className="bg-white shadow rounded p-4">
-          <h2 className="text-lg font-semibold mb-2">Popularity Trend (Last 30 Days)</h2>
+          <h2 className="text-lg font-semibold mb-2">Popularity Trend</h2>
           <div style={{ height: 300 }}>
             <ResponsiveLine
               data={lineData}
               margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
               xScale={{ type: 'point' }}
-              yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false, reverse: false }}
+              yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false }}
               axisBottom={{
                 orient: 'bottom',
                 tickSize: 5,
@@ -142,28 +183,16 @@ export default function SolicitorDetail() {
         </div>
       )}
 
-      <div className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-semibold mb-2">Teams</h2>
-        <ul className="list-disc list-inside text-gray-700">
-          {teams.map((t, i) => (
-            <li key={i}>
-              <a href={`/teams/${t.id}`} className="text-blue-600 hover:underline">
-                {t.name}
-              </a>
-            </li>
-          ))}
-        </ul>
-        
-      </div>
-
-      {teamStats.length > 0 && (
+      {/* Teams List */}
+      {teams.length > 0 && (
         <div className="bg-white shadow rounded p-4">
-          <h2 className="text-lg font-semibold mb-2">Team Clicks (Last 30 Days)</h2>
+          <h2 className="text-lg font-semibold mb-2">Teams</h2>
           <ul className="divide-y divide-gray-200">
-            {teamStats.map((t, i) => (
-              <li key={i} className="flex justify-between py-2">
-                <span className="text-gray-700">{t.team_name}</span>
-                <span className="font-bold">{t.total_clicks}</span>
+            {teams.map((t, i) => (
+              <li key={i} className="py-2">
+                <a href={`/teams/${t.id}`} className="text-blue-600 hover:underline">
+                  {t.name}
+                </a>
               </li>
             ))}
           </ul>

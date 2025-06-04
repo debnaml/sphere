@@ -84,6 +84,7 @@ export default function HomePage() {
           .filter(Boolean)
       };
       setCircleData(packedData);
+      console.log('Circle Data:', packedData);
     }
 
     loadData();
@@ -132,7 +133,7 @@ export default function HomePage() {
 
       {/* Right Column (2/3 width) */}
       <div className="col-span-1 md:col-span-2 bg-white p-4 rounded shadow">
-        <h2 className="text-lg font-semibold mb-2">📦 Views by Team</h2>
+        <h2 className="text-lg font-semibold mb-2">Views by Team</h2>
         <div className="h-[500px]">
           {circleData && (
             <ResponsiveCirclePacking
