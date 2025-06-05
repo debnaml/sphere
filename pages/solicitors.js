@@ -119,7 +119,7 @@ export default function SolicitorList() {
             <h2 className="text-xl font-semibold text-blue-700 mb-1">{s.name}</h2>
             <p className="text-sm text-gray-500 mb-2">View profile</p>
             <div className="text-sm text-gray-700">
-              <p><strong>Views (30d):</strong> {s.clicks_30d ?? 0}</p>
+              <p><strong>Views:</strong> {s.clicks_30d ?? 0}</p>
             </div>
           </Link>
         ))}

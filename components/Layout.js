@@ -13,7 +13,7 @@ const navItems = [
   { href: '/', icon: Globe, label: 'Home' },
   { href: '/solicitors', icon: Users, label: 'Solicitor Stats' },
   { href: '/teams', icon: BarChart2, label: 'Team Stats' },
-  { href: '/calendar', icon: CalendarDays, label: 'Calendar View' },
+  { href: '/events', icon: CalendarDays, label: 'Events' },
   { href: '/content', icon: FileText, label: 'News & Updates' },
 ];
 
