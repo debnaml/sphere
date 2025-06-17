@@ -72,7 +72,7 @@ export default function SolicitorList() {
         className="block bg-white shadow p-4 rounded hover:shadow-lg transition"
       >
         <div className="flex gap-3 items-start">
-          <div className="text-xl font-bold w-6">{index + 1}.</div>
+        <div className="text-xl font-bold min-w-[2.5rem] text-right">{index + 1}.</div>
           <div>
             <h2 className="text-lg font-semibold text-blue-700 mb-1">{s.name}</h2>
             <p className="text-sm text-gray-500 mb-1">View profile</p>
