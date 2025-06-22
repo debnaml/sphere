@@ -1,4 +1,3 @@
-// File: pages/teams/index.js
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../utils/supabase';
@@ -18,19 +17,66 @@ export default function TeamList() {
   }, []);
 
   async function loadTeams() {
-    const { data } = await supabase.from('teams').select('*');
-    setTeams(data || []);
+    const [teamsRes, bioRes, newsRes, updateRes] = await Promise.all([
+      supabase.from('s_teams').select('*'),
+      supabase.from('team_popularity_bio_30d').select('team_id, clicks_30d'),
+      supabase.from('team_popularity_news_30d').select('team_id, clicks_30d'),
+      supabase.from('team_popularity_updates_30d').select('team_id, clicks_30d'),
+    ]);
+  
+    const bioMap = Object.fromEntries((bioRes.data || []).map(row => [row.team_id, row.clicks_30d]));
+    const newsMap = Object.fromEntries((newsRes.data || []).map(row => [row.team_id, row.clicks_30d]));
+    const updatesMap = Object.fromEntries((updateRes.data || []).map(row => [row.team_id, row.clicks_30d]));
+  
+    const enriched = (teamsRes.data || []).map(team => {
+      const clicks_bio = bioMap[team.id] || 0;
+      const clicks_news = newsMap[team.id] || 0;
+      const clicks_updates = updatesMap[team.id] || 0;
+      return {
+        ...team,
+        clicks_bio,
+        clicks_news,
+        clicks_updates,
+        clicks_30d: clicks_bio,
+      };
+    });
+  
+    setTeams(enriched);
   }
 
   async function loadTopTeams() {
     const [bio, news, updates] = await Promise.all([
-      supabase.from('team_popularity_bio_30d').select('*').limit(10),
-      supabase.from('team_popularity_news_30d').select('*').limit(10),
-      supabase.from('team_popularity_updates_30d').select('*').limit(10),
+      supabase
+        .from('team_popularity_bio_30d')
+        .select('team_id, clicks_30d, s_teams(name)')
+        .order('clicks_30d', { ascending: false })
+        .limit(10),
+      supabase
+        .from('team_popularity_news_30d')
+        .select('team_id, clicks_30d, s_teams(name)')
+        .order('clicks_30d', { ascending: false })
+        .limit(10),
+      supabase
+        .from('team_popularity_updates_30d')
+        .select('team_id, clicks_30d, s_teams(name)')
+        .order('clicks_30d', { ascending: false })
+        .limit(10),
     ]);
-    setBioTop(bio.data || []);
-    setNewsTop(news.data || []);
-    setUpdateTop(updates.data || []);
+
+    setBioTop(bio.data?.map(row => ({
+      ...row,
+      name: row.s_teams?.name || 'Unknown',
+    })) || []);
+
+    setNewsTop(news.data?.map(row => ({
+      ...row,
+      name: row.s_teams?.name || 'Unknown',
+    })) || []);
+
+    setUpdateTop(updates.data?.map(row => ({
+      ...row,
+      name: row.s_teams?.name || 'Unknown',
+    })) || []);
   }
 
   const filteredTeams = teams
@@ -41,18 +87,21 @@ export default function TeamList() {
     .sort((a, b) => {
       if (sortBy === 'alphabetical') return a.name.localeCompare(b.name);
       if (sortBy === 'popularity') {
-        const aClicks = bioTop.find(t => t.team_id === a.id)?.clicks_30d || 0;
-        const bClicks = bioTop.find(t => t.team_id === b.id)?.clicks_30d || 0;
+        const aClicks = a.clicks_30d || 0;
+        const bClicks = b.clicks_30d || 0;
         return bClicks - aClicks;
       }
       return 0;
     });
 
   function renderCard(t, index) {
+    const views = t.clicks_30d ?? 0;
+    const teamId = t.id || t.team_id;
+
     return (
       <Link
-        key={t.team_id || t.id}
-        href={`/teams/${t.team_id || t.id}`}
+        key={teamId}
+        href={`/teams/${teamId}`}
         className="block bg-white shadow p-4 rounded hover:shadow-lg transition"
       >
         <div className="flex gap-3 items-start">
@@ -61,7 +110,7 @@ export default function TeamList() {
             <h2 className="text-lg font-semibold text-blue-700 mb-1">{t.name}</h2>
             <p className="text-sm text-gray-500 mb-1">View team page</p>
             <p className="text-sm text-gray-700">
-              <strong>Views:</strong> {t.clicks_30d ?? 0}
+              <strong>Views:</strong> {views}
             </p>
           </div>
         </div>
@@ -71,7 +120,7 @@ export default function TeamList() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Teams</h1>
+      <h1 className="text-3xl font-bold">Teams (last 30 days)</h1>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <input

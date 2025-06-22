@@ -38,7 +38,7 @@ useEffect(() => {
     if (!id) return;
 
     async function loadData() {
-      const { data: tData } = await supabase.from('teams').select('*').eq('id', id).single();
+      const { data: tData } = await supabase.from('s_teams').select('*').eq('id', id).single();
       setTeam(tData);
 
       const { data: statData } = await supabase.rpc('get_team_engagement_stats', {
@@ -127,6 +127,13 @@ useEffect(() => {
         </div>
 
         <div className="flex gap-4">
+        <div className="bg-gray-50 border rounded p-4 w-48">
+  <p className="text-sm text-gray-500">Team Page Views</p>
+  <p className="text-xl font-bold">
+    {stats?.team_clicks ?? 0}
+    {period === '30d' && renderDelta(stats?.team_clicks, previousStats?.team_clicks)}
+  </p>
+</div>
           <div className="bg-gray-50 border rounded p-4 w-48">
             <p className="text-sm text-gray-500">Bio Views</p>
             <p className="text-xl font-bold">

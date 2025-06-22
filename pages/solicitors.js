@@ -37,34 +37,39 @@ export default function SolicitorList() {
   }
 
   async function loadTeams() {
-    const { data } = await supabase.from('teams').select('*');
+    const { data } = await supabase.from('s_teams').select('*');
     const sorted = (data || []).sort((a, b) => a.name.localeCompare(b.name));
     setTeams(sorted);
   }
 
   async function handleSearchAndFilter() {
-    let query = supabase.from('solicitors').select('id, name');
-
-    if (search) query = query.ilike('name', `%${search}%`);
+    let query = supabase
+      .from('solicitor_popularity_bio_30d')
+      .select('solicitor_id, name, clicks_30d');
+  
+    if (search) {
+      query = query.ilike('name', `%${search}%`);
+    }
+  
     let { data: solicitorData } = await query;
-
+  
     if (selectedTeam && solicitorData) {
       const { data: teamLinks } = await supabase
-        .from('solicitor_teams')
+        .from('s_solicitor_teams')
         .select('solicitor_id')
         .eq('team_id', selectedTeam);
-
+  
       const teamIds = new Set(teamLinks?.map(t => t.solicitor_id));
-      solicitorData = solicitorData.filter(s => teamIds.has(s.id));
+      solicitorData = solicitorData.filter(s => teamIds.has(s.solicitor_id));
     }
-
+  
     setFilteredSolicitors(solicitorData || []);
   }
 
   function renderCard(s, index, type) {
     const views = s.clicks_30d ?? 0;
     const solicitorId = s.solicitor_id || s.id;
-
+    
     return (
       <Link
         key={solicitorId}
@@ -88,7 +93,7 @@ export default function SolicitorList() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-3xl font-bold">Solicitors</h1>
+        <h1 className="text-3xl font-bold">Solicitors (last 30 days)</h1>
         <div className="flex flex-wrap gap-4">
           <input
             type="text"

@@ -1,6 +1,4 @@
-// Update for pages/solicitors/[id].js
-// Adds trend comparisons for last 30 days only.
-
+// pages/solicitors/[id].js
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabase';
@@ -16,7 +14,6 @@ export default function SolicitorDetail() {
   const [previousStats, setPreviousStats] = useState(null);
   const [teams, setTeams] = useState([]);
   const [dailyStats, setDailyStats] = useState([]);
-  const [teamStats, setTeamStats] = useState([]);
   const [period, setPeriod] = useState('30d');
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
@@ -25,12 +22,17 @@ export default function SolicitorDetail() {
     if (!id) return;
 
     async function loadData() {
-      const { data: sData } = await supabase.from('solicitors').select('*').eq('id', id).single();
+      const { data: sData } = await supabase
+        .from('s_solicitors')
+        .select('*')
+        .eq('id', id)
+        .single();
+
       const { data: tData } = await supabase
-        .from('solicitor_teams')
-        .select('team_id, teams(name)')
+        .from('s_solicitor_teams')
+        .select('team_id, s_teams(name)')
         .eq('solicitor_id', id)
-        .order('teams(name)');
+        .order('s_teams(name)');
 
       const { data: statData } = await supabase.rpc('get_solicitor_engagement_stats', {
         sid: id,
@@ -39,7 +41,6 @@ export default function SolicitorDetail() {
         to_date: toDate,
       }).select('*');
 
-      // Load previous 30-day stats for comparison (only if current period is 30d)
       let prevStatData = null;
       if (period === '30d') {
         const prevStart = new Date();
@@ -58,14 +59,14 @@ export default function SolicitorDetail() {
       }
 
       const { data: dailyData } = await supabase
-        .from('stats_daily')
+        .from('s_stats_daily')
         .select('date, clicks')
         .gte('clicks', 1)
         .eq('solicitor_id', id)
         .order('date');
 
       setSolicitor(sData);
-      setTeams(tData?.map(t => ({ id: t.team_id, name: t.teams.name })) || []);
+      setTeams(tData?.map(t => ({ id: t.team_id, name: t.s_teams.name })) || []);
       setStats(statData?.[0]);
       setPreviousStats(prevStatData);
       setDailyStats(dailyData || []);
@@ -99,16 +100,14 @@ export default function SolicitorDetail() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold">{solicitor.name}</h1>
-          <p className="text-gray-500">[Job title here]</p>
+          <p className="text-gray-500">{solicitor.position}</p>
         </div>
         <div className="w-24 h-24 bg-gray-300 rounded-full" />
       </div>
 
-      {/* Stats Summary */}
       <div className="bg-white shadow rounded p-4 w-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Engagement</h2>
@@ -163,9 +162,6 @@ export default function SolicitorDetail() {
           </div>
         )}
       </div>
-
-      {/* Calendar + Charts */}
-      {/* (No changes here) */}
 
       {calendarData.length > 0 && (
         <div className="bg-white shadow rounded p-4">

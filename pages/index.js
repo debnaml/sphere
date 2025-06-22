@@ -1,97 +1,37 @@
-// File: pages/index.js
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
-import { CirclePacking } from '@nivo/circle-packing';
 import { Users, BarChart2 } from 'lucide-react';
 
 export default function HomePage() {
   const [topSolicitors, setTopSolicitors] = useState([]);
   const [topTeams, setTopTeams] = useState([]);
-  const [circleData, setCircleData] = useState(null);
-  const chartRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 600, height: 500 });
-
-  useEffect(() => {
-    function handleResize() {
-      if (chartRef.current) {
-        setDimensions({
-          width: chartRef.current.offsetWidth,
-          height: 500,
-        });
-      }
-    }
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     async function loadData() {
+      // Load Top Solicitors by bio views
       const { data: solicitorStats } = await supabase
         .from('solicitor_popularity_bio_30d')
-        .select('solicitor_id, name, clicks_30d');
+        .select('solicitor_id, name, clicks_30d')
+        .order('clicks_30d', { ascending: false })
+        .limit(10);
 
-      const { data: teamLinks } = await supabase
-        .from('solicitor_teams')
-        .select('solicitor_id, team_id');
+      setTopSolicitors(solicitorStats || []);
 
-      const { data: teams } = await supabase
-        .from('teams')
-        .select('id, name');
+      // Load Top Teams by direct team page views
+      const { data: teamStats } = await supabase
+        .from('team_popularity_bio_30d') // Or a new 'team_popularity_page_30d'
+        .select('team_id, clicks_30d, s_teams(name)')
+        .order('clicks_30d', { ascending: false })
+        .limit(10);
 
-      if (!solicitorStats || !teamLinks || !teams) return;
+      const mappedTeams = (teamStats || []).map(t => ({
+        id: t.team_id,
+        name: t.s_teams?.name || 'Unknown',
+        clicks: t.clicks_30d
+      }));
 
-      const solicitorMap = new Map(solicitorStats.map(s => [s.solicitor_id, s]));
-      const teamMap = new Map(teams.map(t => [t.id, t.name]));
-
-      const teamToSolicitors = new Map();
-      teamLinks.forEach(({ solicitor_id, team_id }) => {
-        if (!teamToSolicitors.has(team_id)) teamToSolicitors.set(team_id, []);
-        teamToSolicitors.get(team_id).push(solicitor_id);
-      });
-
-      const topSolicitorList = solicitorStats
-        .filter(s => s.clicks_30d > 0)
-        .sort((a, b) => b.clicks_30d - a.clicks_30d)
-        .slice(0, 10);
-      setTopSolicitors(topSolicitorList);
-
-      const teamClicks = {};
-      for (const [teamId, solicitorIds] of teamToSolicitors.entries()) {
-        teamClicks[teamId] = solicitorIds.reduce((sum, sid) => {
-          const s = solicitorMap.get(sid);
-          return sum + (s?.clicks_30d || 0);
-        }, 0);
-      }
-
-      const topTeamList = Object.entries(teamClicks)
-        .map(([id, clicks]) => ({
-          id,
-          name: teamMap.get(id) || id,
-          clicks
-        }))
-        .filter(t => t.clicks > 0)
-        .sort((a, b) => b.clicks - a.clicks)
-        .slice(0, 10);
-      setTopTeams(topTeamList);
-
-      const packedData = {
-        name: 'Teams',
-        children: Array.from(teamToSolicitors.entries()).map(([teamId, solicitorIds]) => {
-          const children = solicitorIds
-            .map(sid => solicitorMap.get(sid))
-            .filter(s => s && s.clicks_30d > 0)
-            .map(s => ({
-              name: s.name,
-              value: s.clicks_30d,
-            }));
-          const total = children.reduce((sum, c) => sum + c.value, 0);
-          return total > 0 ? { name: teamMap.get(teamId) || teamId, children } : null;
-        }).filter(Boolean),
-      };
-
-      setCircleData(packedData);
+      setTopTeams(mappedTeams);
     }
 
     loadData();
@@ -138,40 +78,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Right Column: Chart */}
+      {/* Right Column (Chart placeholder) */}
       <div className="col-span-1 md:col-span-2 bg-white p-4 rounded shadow">
         <h2 className="text-lg font-semibold mb-2">Views by Team</h2>
-        <div ref={chartRef} className="w-full h-[500px]">
-          {circleData && (
-            <CirclePacking
-              data={circleData}
-              id="name"
-              value="value"
-              width={dimensions.width}
-              height={dimensions.height}
-              margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
-              colors={node =>
-                node.depth === 1 ? '#237781' :
-                node.depth === 2 ? '#331D4C' :
-                '#F5F4F6'
-              }
-              labelSkipRadius={20}
-              labelTextColor={node =>
-                node.depth >= 1 ? '#FFFFFF' : '#000000'
-              }
-              borderColor="#FFFFFF"
-              borderWidth={1}
-              tooltip={({ id, value }) => (
-                <div className="bg-white text-black text-sm p-2 rounded shadow border border-gray-300">
-                  <strong>{id}</strong><br />
-                  {value} views
-                </div>
-              )}
-              animate={true}
-              motionConfig="gentle"
-              zoom={true}
-            />
-          )}
+        <div className="w-full h-[500px] flex items-center justify-center text-gray-400 italic">
+          (Chart temporarily disabled)
         </div>
       </div>
     </div>
