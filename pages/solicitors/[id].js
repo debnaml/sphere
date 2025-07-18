@@ -105,7 +105,14 @@ export default function SolicitorDetail() {
           <h1 className="text-3xl font-bold">{solicitor.name}</h1>
           <p className="text-gray-500">{solicitor.position}</p>
         </div>
-        <div className="w-24 h-24 bg-gray-300 rounded-full" />
+        <img
+          src={`/images/solicitors/${solicitor.name.toLowerCase().replace(/\s+/g, '_')}.jpg`}
+          alt={solicitor.name}
+          className="w-24 h-24 rounded-full object-cover"
+          onError={(e) => {
+            e.currentTarget.src = '/images/solicitors/default.jpg';
+          }}
+        />
       </div>
 
       <div className="bg-white shadow rounded p-4 w-full">

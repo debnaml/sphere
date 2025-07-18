@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
-import { Users, BarChart2 } from 'lucide-react';
+import { Users, BarChart2, X } from 'lucide-react';
+import { ResponsiveBar } from '@nivo/bar';
+import AIAssistant from '../components/AIAssistant';
 
 export default function HomePage() {
   const [topSolicitors, setTopSolicitors] = useState([]);
   const [topTeams, setTopTeams] = useState([]);
+  const [allTeams, setAllTeams] = useState([]);
+  const [selectedTeams, setSelectedTeams] = useState([]);
+  const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
-    async function loadData() {
-      // Load Top Solicitors by bio views
+    async function loadInitialData() {
       const { data: solicitorStats } = await supabase
         .from('solicitor_popularity_bio_30d')
         .select('solicitor_id, name, clicks_30d')
@@ -18,24 +22,66 @@ export default function HomePage() {
 
       setTopSolicitors(solicitorStats || []);
 
-      // Load Top Teams by direct team page views
       const { data: teamStats } = await supabase
-        .from('team_popularity_bio_30d') // Or a new 'team_popularity_page_30d'
+        .from('team_popularity_bio_30d')
         .select('team_id, clicks_30d, s_teams(name)')
         .order('clicks_30d', { ascending: false })
         .limit(10);
 
-      const mappedTeams = (teamStats || []).map(t => ({
+      const mappedTopTeams = (teamStats || []).map(t => ({
         id: t.team_id,
         name: t.s_teams?.name || 'Unknown',
-        clicks: t.clicks_30d
+        clicks: t.clicks_30d,
       }));
 
-      setTopTeams(mappedTeams);
+      setTopTeams(mappedTopTeams);
+
+      const { data: allTeamsData } = await supabase
+        .from('s_teams')
+        .select('id, name')
+        .order('name');
+
+      setAllTeams(allTeamsData || []);
     }
 
-    loadData();
+    loadInitialData();
   }, []);
+
+  useEffect(() => {
+    async function loadChartData() {
+      if (selectedTeams.length === 0) {
+        setChartData([]);
+        return;
+      }
+
+      const { data } = await supabase.rpc('get_team_solicitor_breakdown', {
+        team_ids: selectedTeams.map(t => t.id),
+      });
+
+      if (data) {
+        const pivot = {};
+        data.forEach(({ team_name, solicitor_name, clicks }) => {
+          if (!pivot[team_name]) pivot[team_name] = { team_name };
+          pivot[team_name][solicitor_name] = clicks;
+        });
+
+        setChartData(Object.values(pivot));
+      }
+    }
+
+    loadChartData();
+  }, [selectedTeams]);
+
+  function handleAddTeam(id) {
+    const team = allTeams.find(t => t.id === id);
+    if (team && selectedTeams.length < 4 && !selectedTeams.find(t => t.id === id)) {
+      setSelectedTeams([...selectedTeams, team]);
+    }
+  }
+
+  function handleRemoveTeam(id) {
+    setSelectedTeams(selectedTeams.filter(t => t.id !== id));
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -78,13 +124,66 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Right Column (Chart placeholder) */}
+      {/* Right Column (Chart) */}
       <div className="col-span-1 md:col-span-2 bg-white p-4 rounded shadow">
-        <h2 className="text-lg font-semibold mb-2">Views by Team</h2>
-        <div className="w-full h-[500px] flex items-center justify-center text-gray-400 italic">
-          (Chart temporarily disabled)
+        <h2 className="text-lg font-semibold mb-2">Compare Team Bio Views</h2>
+
+        <div className="mb-4">
+          <label className="block mb-1 text-sm font-medium">Add a team</label>
+          <select
+            onChange={(e) => handleAddTeam(e.target.value)}
+            defaultValue=""
+            className="border p-2 rounded w-full"
+          >
+            <option value="" disabled>
+              Select team
+            </option>
+            {allTeams.map(team => (
+              <option key={team.id} value={team.id}>{team.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {selectedTeams.map(team => (
+            <span
+              key={team.id}
+              className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full flex items-center gap-1"
+            >
+              {team.name}
+              <button onClick={() => handleRemoveTeam(team.id)}><X size={12} /></button>
+            </span>
+          ))}
+        </div>
+
+        <div className="w-full overflow-x-auto" style={{ height: '500px' }}>
+          {chartData.length > 0 ? (
+            <ResponsiveBar
+              data={chartData}
+              keys={
+                Array.from(
+                  new Set(chartData.flatMap(d =>
+                    Object.keys(d).filter(k => k !== 'team_name')
+                  ))
+                )
+              }
+              indexBy="team_name"
+              margin={{ top: 40, right: 130, bottom: 60, left: 60 }}
+              padding={0.3}
+              groupMode="stacked"
+              axisBottom={{ tickRotation: -30 }}
+              axisLeft={{ legend: 'Views', legendPosition: 'middle', legendOffset: -40 }}
+              labelSkipWidth={12}
+              labelSkipHeight={12}
+              legends={[]}
+              animate
+            />
+          ) : (
+            <div className="text-center text-gray-400 italic">Select up to 4 teams to compare</div>
+          )}
         </div>
       </div>
+      <AIAssistant />
     </div>
   );
 }
