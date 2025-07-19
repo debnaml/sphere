@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabase';
 import { ResponsiveCalendar } from '@nivo/calendar';
 import { ResponsiveLine } from '@nivo/line';
+import MentionsImpactChart from '../../components/MentionsImpactChart';
 
 export default function SolicitorDetail() {
   const router = useRouter();
   const { id } = router.query;
-
+  const [mentions, setMentions] = useState([]);
   const [solicitor, setSolicitor] = useState(null);
   const [stats, setStats] = useState(null);
   const [previousStats, setPreviousStats] = useState(null);
@@ -22,6 +23,19 @@ export default function SolicitorDetail() {
     if (!id) return;
 
     async function loadData() {
+
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      
+      const { data: mentionData } = await supabase
+        .from('s_mentions')
+        .select('published_at, impact_score, sentiment, medium')
+        .eq('solicitor_id', id)
+        .gte('published_at', oneYearAgo.toISOString())
+        .order('published_at', { ascending: true });
+      
+      setMentions(mentionData || []);
+
       const { data: sData } = await supabase
         .from('s_solicitors')
         .select('*')
@@ -189,7 +203,7 @@ export default function SolicitorDetail() {
           </div>
         </div>
       )}
-
+      <MentionsImpactChart solicitorId={solicitor.id} />
       {lineData[0].data.length > 0 && (
         <div className="bg-white shadow rounded p-4">
           <h2 className="text-lg font-semibold mb-2">Popularity Trend</h2>
