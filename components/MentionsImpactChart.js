@@ -112,7 +112,7 @@ export default function MentionsImpactChart({ solicitorId }) {
 
   return (
     <div className="bg-white shadow rounded p-4">
-      <h2 className="text-lg font-semibold mb-4">Mentions Impact & Bio Views</h2>
+      <h2 className="text-lg font-semibold mb-4">Mentions Impact & Bio Views (last 6 months)</h2>
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart data={chartData}>
           <CartesianGrid stroke="#eee" strokeDasharray="3 3" />

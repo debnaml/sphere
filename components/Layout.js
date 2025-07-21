@@ -7,6 +7,7 @@ import {
   CalendarDays,
   FileText,
   Globe,
+  Megaphone
 } from 'lucide-react';
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
   { href: '/teams', icon: BarChart2, label: 'Team Stats' },
   { href: '/events', icon: CalendarDays, label: 'Events' },
   { href: '/content', icon: FileText, label: 'News & Updates' },
+  { href: '/pr', icon: Megaphone , label: 'PR Dashboard' },
 ];
 
 export default function Layout({ children }) {

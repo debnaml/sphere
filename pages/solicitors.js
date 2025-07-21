@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
 
+
 export default function SolicitorList() {
   const [bioTop, setBioTop] = useState([]);
   const [newsTop, setNewsTop] = useState([]);
