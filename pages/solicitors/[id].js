@@ -8,6 +8,7 @@ import MentionsImpactChart from '../../components/MentionsImpactChart';
 import SolicitorTabs from '../../components/SolicitorTabs';
 import LegalUpdatesStats from '../../components/LegalUpdatesStats';
 import PRMentionsPanel from '../../components/PRMentionsPanel';
+import EmailTemplate from '../../components/EmailTemplate';
 
 export default function SolicitorDetail() {
   const router = useRouter();
@@ -139,6 +140,7 @@ export default function SolicitorDetail() {
           { value: 'legal', label: 'Legal Updates' },
           { value: 'news', label: 'News' },
           { value: 'pr', label: 'PR' },
+          { value: 'email', label: 'Email' },
         ]}
         activeTab={selectedTab}
         onChange={(tab) => setSelectedTab(tab)}
@@ -289,6 +291,10 @@ export default function SolicitorDetail() {
       {selectedTab === 'pr' && (
          <PRMentionsPanel solicitorId={solicitor.id} />
       )}
+        {selectedTab === 'email' && (
+        <EmailTemplate  solicitorId={solicitor.id} />
+      )}
+
     </div>
   );
 }
