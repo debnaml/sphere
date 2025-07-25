@@ -12,19 +12,16 @@ const toYMD = (d) =>
 function calcRange(range, fromDate, toDate) {
   const today = new Date();
 
-  // CUSTOM
   if (range === 'custom') {
     const fromStr = toYMD(fromDate);
     const toStr = toYMD(toDate);
     if (!fromStr || !toStr) {
-      // not ready yet (user hasn't picked both dates)
       return { ready: false };
     }
 
     const from = new Date(fromStr);
     const to = new Date(toStr);
-    const lengthDays =
-      Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
+    const lengthDays = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
 
     return {
       ready: true,
@@ -34,7 +31,6 @@ function calcRange(range, fromDate, toDate) {
     };
   }
 
-  // NUMERIC DAYS (30, 60, 90)
   const days = Number(range);
   const end = today;
   const start = new Date(end);
@@ -57,14 +53,8 @@ export default function EngagementStats({ solicitorId, range, fromDate, toDate }
     if (!solicitorId) return;
 
     async function loadStats() {
-      const { ready, currentFrom, currentTo, lengthDays } = calcRange(
-        range,
-        fromDate,
-        toDate
-      );
-
+      const { ready, currentFrom, currentTo, lengthDays } = calcRange(range, fromDate, toDate);
       if (!ready) {
-        // Custom selected but dates not chosen yet
         setStats(null);
         setPreviousStats(null);
         setLoading(false);
@@ -73,9 +63,9 @@ export default function EngagementStats({ solicitorId, range, fromDate, toDate }
 
       setLoading(true);
 
-      // ---- current period
+      // Current period
       const { data: current, error: currentError } = await supabase.rpc(
-        'get_solicitor_engagement_range', // <-- your new function name
+        'get_solicitor_engagement_plus',
         {
           sid: solicitorId,
           from_date: currentFrom,
@@ -88,11 +78,11 @@ export default function EngagementStats({ solicitorId, range, fromDate, toDate }
         setStats(null);
       } else {
         setStats(
-          current?.[0] || { bio_clicks: 0, update_clicks: 0, news_clicks: 0 }
+          current?.[0] || { bio_clicks: 0, update_clicks: 0, news_clicks: 0, phone_clicks: 0, email_clicks: 0 }
         );
       }
 
-      // ---- previous equal-length period
+      // Previous equal-length period
       const prevToDate = new Date(currentFrom);
       prevToDate.setDate(prevToDate.getDate() - 1);
       const prevFromDate = new Date(prevToDate);
@@ -102,7 +92,7 @@ export default function EngagementStats({ solicitorId, range, fromDate, toDate }
       const prevToStr = toYMD(prevToDate);
 
       const { data: previous, error: prevError } = await supabase.rpc(
-        'get_solicitor_engagement_range',
+        'get_solicitor_engagement_plus',
         {
           sid: solicitorId,
           from_date: prevFromStr,
@@ -115,7 +105,7 @@ export default function EngagementStats({ solicitorId, range, fromDate, toDate }
         setPreviousStats(null);
       } else {
         setPreviousStats(
-          previous?.[0] || { bio_clicks: 0, update_clicks: 0, news_clicks: 0 }
+          previous?.[0] || { bio_clicks: 0, update_clicks: 0, news_clicks: 0, phone_clicks: 0, email_clicks: 0 }
         );
       }
 
@@ -148,7 +138,6 @@ export default function EngagementStats({ solicitorId, range, fromDate, toDate }
     );
   }
 
-  // If custom not ready yet
   if (!stats) {
     return (
       <div className="bg-white shadow rounded p-4 w-full">
@@ -168,7 +157,7 @@ export default function EngagementStats({ solicitorId, range, fromDate, toDate }
     <div className="bg-white shadow rounded p-4 w-full">
       <h2 className="text-lg font-semibold mb-4">Engagement</h2>
 
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <div className="bg-gray-50 border rounded p-4 w-48">
           <p className="text-sm text-gray-500">Bio Views</p>
           <p className="text-xl font-bold">
@@ -190,6 +179,22 @@ export default function EngagementStats({ solicitorId, range, fromDate, toDate }
           <p className="text-xl font-bold">
             {stats?.news_clicks ?? 0}
             {renderDelta(stats?.news_clicks, previousStats?.news_clicks)}
+          </p>
+        </div>
+
+        <div className="bg-gray-50 border rounded p-4 w-48">
+          <p className="text-sm text-gray-500">Phone Clicks</p>
+          <p className="text-xl font-bold">
+            {stats?.phone_clicks ?? 0}
+            {renderDelta(stats?.phone_clicks, previousStats?.phone_clicks)}
+          </p>
+        </div>
+
+        <div className="bg-gray-50 border rounded p-4 w-48">
+          <p className="text-sm text-gray-500">Email Clicks</p>
+          <p className="text-xl font-bold">
+            {stats?.email_clicks ?? 0}
+            {renderDelta(stats?.email_clicks, previousStats?.email_clicks)}
           </p>
         </div>
       </div>
