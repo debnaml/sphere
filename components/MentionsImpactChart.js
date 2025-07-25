@@ -1,6 +1,7 @@
+// components/MentionsImpactChart.js
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../utils/supabase';
 import {
   ResponsiveContainer,
@@ -13,25 +14,43 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { format, subMonths, eachDayOfInterval } from 'date-fns';
+import {
+  format,
+  eachDayOfInterval,
+  subDays,
+  parseISO,
+  isValid,
+  startOfDay,
+} from 'date-fns';
 
-export default function MentionsImpactChart({ solicitorId }) {
+export default function MentionsImpactChart({
+  solicitorId,
+  range = 90,           // 30 | 60 | 90 | 'custom'
+  fromDate = null,      // yyyy-mm-dd (only used when range === 'custom')
+  toDate = null,        // yyyy-mm-dd (only used when range === 'custom')
+}) {
   const [chartData, setChartData] = useState([]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
-      const impact = payload.find(p => p.dataKey === 'impact_score');
-      const views = payload.find(p => p.dataKey === 'bio_views');
+      const impact = payload.find((p) => p.dataKey === 'impact_score');
+      const views = payload.find((p) => p.dataKey === 'bio_views');
 
       return (
         <div className="bg-white border border-gray-300 p-2 rounded shadow text-sm max-w-xs">
           <div className="font-semibold">{label}</div>
-          {impact && impact.payload.impact_score > 0 && (
+          {impact && impact.payload.impact_score != null && (
             <>
               <div><strong>Impact Score:</strong> {impact.payload.impact_score}</div>
-              <div><strong>Title:</strong> {impact.payload.title}</div>
-              <div><strong>Source:</strong> {impact.payload.source}</div>
-              <div><strong>Sentiment:</strong> {impact.payload.sentiment}</div>
+              {impact.payload.title && (
+                <div><strong>Title:</strong> {impact.payload.title}</div>
+              )}
+              {impact.payload.source && (
+                <div><strong>Source:</strong> {impact.payload.source}</div>
+              )}
+              {impact.payload.sentiment != null && (
+                <div><strong>Sentiment:</strong> {impact.payload.sentiment}</div>
+              )}
             </>
           )}
           {views && (
@@ -48,10 +67,28 @@ export default function MentionsImpactChart({ solicitorId }) {
     if (!solicitorId) return;
 
     async function loadData() {
-      const startDate = subMonths(new Date(), 6);
-      const today = new Date();
+      const today = startOfDay(new Date());
 
-      const allDates = eachDayOfInterval({ start: startDate, end: today }).map((d) =>
+      let startDate;
+      let endDate;
+
+      if (range === 'custom' && fromDate && toDate) {
+        startDate = startOfDay(parseISO(fromDate));
+        endDate = startOfDay(parseISO(toDate));
+      } else {
+        const numericRange = Number(range) || 90;
+        startDate = subDays(today, numericRange);
+        endDate = today;
+      }
+
+      // Guard against invalid dates
+      if (!isValid(startDate) || !isValid(endDate)) {
+        setChartData([]);
+        return;
+      }
+
+      // Build all dates in the interval for a continuous X axis
+      const allDates = eachDayOfInterval({ start: startDate, end: endDate }).map((d) =>
         format(d, 'yyyy-MM-dd')
       );
 
@@ -61,15 +98,16 @@ export default function MentionsImpactChart({ solicitorId }) {
           .select('published_at, impact_score, title, source, sentiment')
           .eq('solicitor_id', solicitorId)
           .gte('published_at', startDate.toISOString())
-          .lte('published_at', today.toISOString()),
+          .lte('published_at', endDate.toISOString()),
         supabase
           .from('s_stats_daily')
           .select('date, clicks')
           .eq('solicitor_id', solicitorId)
           .gte('date', startDate.toISOString())
-          .lte('date', today.toISOString()),
+          .lte('date', endDate.toISOString()),
       ]);
 
+      // Aggregate mentions per day
       const impactByDate = {};
       mentions?.forEach((m) => {
         const date = m.published_at.slice(0, 10);
@@ -84,6 +122,7 @@ export default function MentionsImpactChart({ solicitorId }) {
         impactByDate[date].impact_score += m.impact_score || 0;
       });
 
+      // Aggregate bio views per day
       const viewsByDate = {};
       views?.forEach((v) => {
         const date = v.date;
@@ -93,10 +132,9 @@ export default function MentionsImpactChart({ solicitorId }) {
       const merged = allDates.map((date) => {
         const impact = impactByDate[date];
         const hasImpact = impact && impact.impact_score > 0;
-      
         return {
           date,
-          impact_score: hasImpact ? impact.impact_score : null, // prevents plotting dots
+          impact_score: hasImpact ? impact.impact_score : null, // don't plot 0-score dots
           title: hasImpact ? impact.title : '',
           source: hasImpact ? impact.source : '',
           sentiment: hasImpact ? impact.sentiment : null,
@@ -108,23 +146,40 @@ export default function MentionsImpactChart({ solicitorId }) {
     }
 
     loadData();
-  }, [solicitorId]);
+  }, [solicitorId, range, fromDate, toDate]);
+
+  // Only show each month label once
+  const monthTicks = useMemo(() => {
+    if (!chartData.length) return [];
+    const seen = new Set();
+    return chartData
+      .map((d) => d.date)
+      .filter((d) => {
+        const key = format(parseISO(d), 'yyyy-MM');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [chartData]);
+
+  const headingLabel =
+    range === 'custom' && fromDate && toDate
+      ? `Mentions Impact & Bio Views (${fromDate} → ${toDate})`
+      : `Mentions Impact & Bio Views (last ${range} days)`;
 
   return (
     <div className="bg-white shadow rounded p-4">
-      <h2 className="text-lg font-semibold mb-4">Mentions Impact & Bio Views (last 6 months)</h2>
+      <h2 className="text-lg font-semibold mb-4">{headingLabel}</h2>
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart data={chartData}>
           <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
           <XAxis
-            dataKey="date"
-            tickFormatter={(str) => {
-              const date = new Date(str);
-              return format(date, 'MMM');
-            }}
-            interval="preserveStartEnd"
-            minTickGap={20}
-          />
+          dataKey="date"
+          ticks={monthTicks}
+          tickFormatter={(d) => format(parseISO(d), 'MMM')}
+          interval={0}
+          minTickGap={20}
+        />
           <YAxis
             yAxisId="left"
             orientation="left"

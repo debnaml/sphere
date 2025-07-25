@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import {
-  Home,
   Users,
   BarChart2,
   CalendarDays,
   FileText,
   Globe,
-  Megaphone
+  Megaphone,
+  Menu,
+  X,
 } from 'lucide-react';
 
 const navItems = [
@@ -16,34 +17,34 @@ const navItems = [
   { href: '/teams', icon: BarChart2, label: 'Team Stats' },
   { href: '/events', icon: CalendarDays, label: 'Events' },
   { href: '/content', icon: FileText, label: 'News & Updates' },
-  { href: '/pr', icon: Megaphone , label: 'PR Dashboard' },
+  { href: '/pr', icon: Megaphone, label: 'PR Dashboard' },
 ];
 
 export default function Layout({ children }) {
   const [hovered, setHovered] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     let timeout;
     if (hovered) {
-      timeout = setTimeout(() => setShowLabels(true), 300); // Match transition duration
+      timeout = setTimeout(() => setShowLabels(true), 300);
     } else {
-      setShowLabels(false); // Instantly hide on collapse
+      setShowLabels(false);
     }
     return () => clearTimeout(timeout);
   }, [hovered]);
 
   return (
     <div className="flex">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full z-30 bg-white border-r border-gray-200 shadow transition-all duration-300
+        className={`hidden md:block fixed top-0 left-0 h-full z-30 bg-white border-r border-gray-200 shadow transition-all duration-300
           ${hovered ? 'w-56' : 'w-16'}`}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
         <div className="h-full flex flex-col items-start px-2 py-4 space-y-6">
-          {/* Navigation */}
           <nav className="flex flex-col w-full space-y-2">
             {navItems.map(({ href, icon: Icon, label }) => (
               <Link
@@ -65,8 +66,38 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
+      {/* Mobile Top Bar */}
+      <div className="md:hidden fixed top-0 left-0 w-full bg-white border-b border-gray-200 shadow px-4 py-3 flex items-center justify-between z-40">
+        <h1 className="text-lg font-bold">Dashboard</h1>
+        <button onClick={() => setMobileOpen((o) => !o)}>
+          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Mobile Menu with Slide Animation */}
+      <div
+        className={`md:hidden fixed top-12 left-0 w-full bg-white shadow-lg border-b border-gray-200 z-30 transform transition-transform duration-300 ${
+          mobileOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+        }`}
+      >
+        <nav className="flex flex-col w-full">
+          {navItems.map(({ href, icon: Icon, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100"
+              onClick={() => setMobileOpen(false)}
+            >
+              <Icon size={20} className="mr-2" />
+              <span className="text-sm">{label}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
+
       {/* Main Content */}
-      <main className="flex-1 ml-16 p-8 bg-gray-100 min-h-screen">
+
+      <main className="flex-1 md:ml-16 ml-0 p-8 min-h-screen bg-grey-100 pt-20 md:pt-10">
         {children}
       </main>
     </div>

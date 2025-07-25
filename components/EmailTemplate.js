@@ -25,6 +25,7 @@ export default function EmailTemplate({ solicitorId }) {
 
   const renderDelta = (current, previous) => {
     const diff = current - previous;
+    if (Math.abs(diff) === 0) return null;
     const arrow = diff > 0 ? '↑' : '↓';
     const color = diff > 0 ? 'text-green-600' : 'text-red-600';
     return (
@@ -40,7 +41,7 @@ export default function EmailTemplate({ solicitorId }) {
   const sections = [
     { key: 'bio', label: 'Bio Views' },
     { key: 'events', label: 'Events Attended' },
-    { key: 'updates', label: 'Legal Updates' },
+    { key: 'updates', label: 'Legal Updates Posted' },
     { key: 'news', label: 'News Items' },
     { key: 'mentions', label: 'Mentions' },
   ];
