@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabase';
 import { ResponsiveCalendar } from '@nivo/calendar';
 import { ResponsiveLine } from '@nivo/line';
+import TopSolicitorsGrid from '../../components/TopSolicitorsGrid';
 
 export default function TeamDetail() {
   const router = useRouter();
@@ -110,6 +111,27 @@ useEffect(() => {
         <div className="w-24 h-24 bg-gray-200 rounded-full" />
       </div>
 
+      {/* Calendar */}
+      {calendarData.length > 0 && (
+        <div className="bg-white shadow rounded p-4">
+          <h2 className="text-lg font-semibold mb-2">Daily Clicks Calendar</h2>
+          <div style={{ height: 200 }}>
+            <ResponsiveCalendar
+              data={calendarData}
+              from={calendarData[0].day}
+              to={calendarData[calendarData.length - 1].day}
+              emptyColor="#eeeeee"
+              colors={["#d6e685", "#8cc665", "#44a340", "#1e6823"]}
+              margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+              yearSpacing={40}
+              monthBorderColor="#ffffff"
+              dayBorderWidth={2}
+              dayBorderColor="#ffffff"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Engagement Summary */}
       <div className="bg-white shadow rounded p-4 w-full">
         <div className="flex justify-between items-center mb-4">
@@ -127,13 +149,13 @@ useEffect(() => {
         </div>
 
         <div className="flex gap-4">
-        <div className="bg-gray-50 border rounded p-4 w-48">
-  <p className="text-sm text-gray-500">Team Page Views</p>
-  <p className="text-xl font-bold">
-    {stats?.team_clicks ?? 0}
-    {period === '30d' && renderDelta(stats?.team_clicks, previousStats?.team_clicks)}
-  </p>
-</div>
+          <div className="bg-gray-50 border rounded p-4 w-48">
+            <p className="text-sm text-gray-500">Team Page Views</p>
+            <p className="text-xl font-bold">
+              {stats?.team_clicks ?? 0}
+              {period === '30d' && renderDelta(stats?.team_clicks, previousStats?.team_clicks)}
+            </p>
+          </div>
           <div className="bg-gray-50 border rounded p-4 w-48">
             <p className="text-sm text-gray-500">Bio Views</p>
             <p className="text-xl font-bold">
@@ -173,80 +195,9 @@ useEffect(() => {
         )}
       </div>
 
-      {/* Calendar */}
-      {calendarData.length > 0 && (
-        <div className="bg-white shadow rounded p-4">
-          <h2 className="text-lg font-semibold mb-2">Daily Clicks Calendar</h2>
-          <div style={{ height: 200 }}>
-            <ResponsiveCalendar
-              data={calendarData}
-              from={calendarData[0].day}
-              to={calendarData[calendarData.length - 1].day}
-              emptyColor="#eeeeee"
-              colors={["#d6e685", "#8cc665", "#44a340", "#1e6823"]}
-              margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-              yearSpacing={40}
-              monthBorderColor="#ffffff"
-              dayBorderWidth={2}
-              dayBorderColor="#ffffff"
-            />
-          </div>
-        </div>
-      )}
+      
+      {team?.id && <TopSolicitorsGrid teamId={team.id} />}
 
-    {topSolicitors.length > 0 && (
-      <div className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-semibold mb-2">Top 3 Solicitors by Bio Views</h2>
-        <ul className="divide-y divide-gray-200">
-          {topSolicitors.map((s, i) => (
-            <li key={s.solicitor_id} className="py-3">
-              <a href={`/solicitors/${s.solicitor_id}`} className="flex items-center justify-between hover:underline text-blue-600">
-                <span>{i + 1}. {s.name}</span>
-                <span className="text-sm text-gray-500">{s.clicks} views</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
-
-      {/* Trend Chart */}
-      {lineData[0].data.length > 0 && (
-        <div className="bg-white shadow rounded p-4">
-          <h2 className="text-lg font-semibold mb-2">Popularity Trend</h2>
-          <div style={{ height: 300 }}>
-            <ResponsiveLine
-              data={lineData}
-              margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
-              xScale={{ type: 'point' }}
-              yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false }}
-              axisBottom={{
-                orient: 'bottom',
-                tickSize: 5,
-                tickPadding: 5,
-                tickRotation: -45,
-                legend: 'Date',
-                legendOffset: 36,
-                legendPosition: 'middle',
-              }}
-              axisLeft={{
-                orient: 'left',
-                tickSize: 5,
-                tickPadding: 5,
-                legend: 'Clicks',
-                legendOffset: -40,
-                legendPosition: 'middle',
-              }}
-              colors={{ scheme: 'category10' }}
-              pointSize={6}
-              pointColor={{ theme: 'background' }}
-              pointBorderWidth={2}
-              pointBorderColor={{ from: 'serieColor' }}
-              useMesh={true}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
