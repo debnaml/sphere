@@ -10,7 +10,7 @@ export default function LegalUpdatesStats({ solicitorId }) {
     if (!solicitorId) return;
 
     const fetchStats = async () => {
-       alert('hello');
+       
       setLoading(true);
       setError(null);
 
@@ -19,9 +19,7 @@ export default function LegalUpdatesStats({ solicitorId }) {
         { sid: solicitorId }
       );
 
-      console.log('RPC raw data:', data);
-      console.log('RPC error:', error);
-
+      
       if (error) {
         console.error('Supabase RPC error:', error.message, error.details || '', error.hint || '');
         setError(error);
