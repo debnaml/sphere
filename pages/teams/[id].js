@@ -6,6 +6,7 @@ import { supabase } from '../../utils/supabase';
 import { ResponsiveCalendar } from '@nivo/calendar';
 import { ResponsiveLine } from '@nivo/line';
 import TopSolicitorsGrid from '../../components/TopSolicitorsGrid';
+import EngagementStatsTeam from '../../components/EngagementStatsTeam';
 
 export default function TeamDetail() {
   const router = useRouter();
@@ -17,6 +18,11 @@ export default function TeamDetail() {
   const [period, setPeriod] = useState('30d');
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
+
+   // Unified range controls
+  const [miRange, setMiRange] = useState(30); // 30 | 60 | 90 | 'custom'
+  const [miFrom, setMiFrom] = useState(null);
+  const [miTo, setMiTo] = useState(null);
 
   const [topSolicitors, setTopSolicitors] = useState([]);
 
@@ -131,7 +137,48 @@ useEffect(() => {
           </div>
         </div>
       )}
+      {/* Range Picker */}
+          <div className="bg-white shadow rounded p-4 w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <label className="text-sm font-medium">Data Range:</label>
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={miRange}
+                onChange={(e) => setMiRange(e.target.value)}
+              >
+                <option value={30}>Last 30 Days</option>
+                <option value={60}>Last 60 Days</option>
+                <option value={90}>Last 90 Days</option>
+                <option value="custom">Custom Range</option>
+              </select>
 
+              {miRange === 'custom' && (
+                <>
+                  <input
+                    type="date"
+                    className="border rounded px-2 py-1 text-sm"
+                    value={miFrom || ''}
+                    onChange={(e) => setMiFrom(e.target.value)}
+                  />
+                  <span className="text-sm">to</span>
+                  <input
+                    type="date"
+                    className="border rounded px-2 py-1 text-sm"
+                    value={miTo || ''}
+                    onChange={(e) => setMiTo(e.target.value)}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+
+      {/* Engagement Component */}
+        <EngagementStatsTeam
+          teamId={team.id}
+          range={miRange}
+          fromDate={miFrom}
+          toDate={miTo}
+        />
       {/* Engagement Summary */}
       <div className="bg-white shadow rounded p-4 w-full">
         <div className="flex justify-between items-center mb-4">
