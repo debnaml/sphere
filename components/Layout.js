@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Users,
   BarChart2,
@@ -27,6 +28,7 @@ export default function Layout({ children }) {
   const [hovered, setHovered] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     let timeout;
@@ -81,17 +83,22 @@ export default function Layout({ children }) {
               <div className="w-12 flex justify-center">
                 <UserCircle size={22} className="text-white transition-colors group-hover:text-[#CBEEF3]" />
               </div>
-              {showLabels && <span className="text-sm">Profile</span>}
+              {showLabels && (
+                <span className="text-sm">
+                  {user?.email ? user.email : 'Profile'}
+                </span>
+              )}
             </Link>
-            <Link
-              href="/logout"
-              className="group flex items-center px-2 py-2 text-white rounded-lg transition-colors hover:text-[#CBEEF3] hover:bg-[#331D4C]"
+            <button
+              type="button"
+              onClick={signOut}
+              className="group flex w-full items-center px-2 py-2 text-left text-white rounded-lg transition-colors hover:text-[#CBEEF3] hover:bg-[#331D4C]"
             >
               <div className="w-12 flex justify-center">
                 <LogOut size={20} className="text-white transition-colors group-hover:text-[#CBEEF3]" />
               </div>
               {showLabels && <span className="text-sm">Log out</span>}
-            </Link>
+            </button>
           </div>
         </div>
       </aside>
@@ -122,6 +129,27 @@ export default function Layout({ children }) {
               <span className="text-sm">{label}</span>
             </Link>
           ))}
+          <div className="border-t border-gray-200 mt-2 pt-2">
+            <Link
+              href="/profile"
+              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100"
+              onClick={() => setMobileOpen(false)}
+            >
+              <UserCircle size={20} className="mr-2" />
+              <span className="text-sm">{user?.email || 'Profile'}</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileOpen(false);
+                signOut();
+              }}
+              className="flex w-full items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-100"
+            >
+              <LogOut size={20} className="mr-2" />
+              <span className="text-sm">Log out</span>
+            </button>
+          </div>
         </nav>
       </div>
 
