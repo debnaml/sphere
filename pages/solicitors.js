@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
-
+import PageHeading from '../components/PageHeading';
 
 export default function SolicitorList() {
   const [bioTop, setBioTop] = useState([]);
@@ -94,7 +94,7 @@ export default function SolicitorList() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-3xl font-bold">Solicitors (last 30 days)</h1>
+        <PageHeading>Solicitors (last 30 days)</PageHeading>
         <div className="flex flex-wrap gap-4">
           <input
             type="text"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../utils/supabase';
+import PageHeading from '../../components/PageHeading';
 
 export default function TeamList() {
   const [teams, setTeams] = useState([]);
@@ -120,7 +121,7 @@ export default function TeamList() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Teams (last 30 days)</h1>
+      <PageHeading>Teams (last 30 days)</PageHeading>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <input

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
 import EventSlideOverForm from '../components/EventSlideOverForm';
+import PageHeading from '../components/PageHeading';
 
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
@@ -128,7 +129,7 @@ export default function EventsPage() {
 
   return (
     <div className="relative">
-      <h1 className="text-xl font-bold mb-6">Events</h1>
+      <PageHeading className="mb-6">Events</PageHeading>
 
       {/* Upcoming */}
       <section className="mb-10">

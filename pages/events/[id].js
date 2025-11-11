@@ -2,6 +2,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabase';
+import PageHeading from '../../components/PageHeading';
 
 export default function EventStats() {
   const router = useRouter();
@@ -164,12 +165,19 @@ export default function EventStats() {
     return !isNaN(n) && n >= 0;
   }
 
-  if (!event) return <div className="p-4">Loading event stats...</div>;
+  if (!event) {
+    return (
+      <div className="p-4 space-y-2">
+        <PageHeading>Loading event...</PageHeading>
+        <p className="text-sm text-gray-600">Fetching the latest statistics.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-8">
       <div>
-        <h1 className="text-xl font-bold mb-1">{event.title}</h1>
+        <PageHeading className="mb-1">{event.title}</PageHeading>
         <p className="text-sm text-gray-600">
           {event.start_date} → {event.end_date} (+3 days)
         </p>

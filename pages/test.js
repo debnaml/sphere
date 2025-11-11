@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
 import { ResponsiveCirclePacking } from '@nivo/circle-packing';
+import PageHeading from '../components/PageHeading';
 
 
 export default function TestPage() {
@@ -10,8 +11,8 @@ export default function TestPage() {
 
 
     return (
-      <div className="p-8">
-        <h1 className="text-xl font-bold">Test Page</h1>
+      <div className="space-y-4">
+        <PageHeading>Test Page</PageHeading>
         <p>This is just a quick page to try something out.</p>
         {circleData && (
             <ResponsiveCirclePacking

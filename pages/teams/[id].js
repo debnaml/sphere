@@ -7,6 +7,7 @@ import { ResponsiveCalendar } from '@nivo/calendar';
 import { ResponsiveLine } from '@nivo/line';
 import TopSolicitorsGrid from '../../components/TopSolicitorsGrid';
 import EngagementStatsTeam from '../../components/EngagementStatsTeam';
+import PageHeading from '../../components/PageHeading';
 
 export default function TeamDetail() {
   const router = useRouter();
@@ -105,13 +106,20 @@ useEffect(() => {
     },
   ];
 
-  if (!team) return <div>Loading...</div>;
+  if (!team) {
+    return (
+      <div className="p-4 space-y-2">
+        <PageHeading>Loading team...</PageHeading>
+        <p className="text-sm text-gray-600">Fetching team insights.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{team.name}</h1>
+          <PageHeading>{team.name}</PageHeading>
           <p className="text-gray-500">[Team Type: {team.type}]</p>
         </div>
         <div className="w-24 h-24 bg-gray-200 rounded-full" />
